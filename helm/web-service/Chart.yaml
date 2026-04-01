@@ -1,0 +1,8 @@
+apiVersion: v2
+name: web-service
+version: 0.1.0
+description: Universal Helm chart for deploying a web service component
+
+type: application
+
+appVersion: "1.0.0"
