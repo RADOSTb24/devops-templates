@@ -179,21 +179,6 @@ jobs:
           sudo apt update
           sudo apt install -y cloudfleet
 
-      - name: Debug Environment Variables
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "NAMESPACE=${NAMESPACE}"
-          echo "CLOUDFLEET_CLUSTER_ID=${{ secrets.CLOUDFLEET_CLUSTER_ID }}"
-      - name: Add Cloudfleet Auth Profile
-        shell: bash
-        run: |
-          set -euo pipefail
-          cloudfleet auth add-profile \
-            --access-token-id "${{ secrets.CLOUDFLEET_ACCESS_TOKEN_ID }}" \
-            --access-token-secret "${{ secrets.CLOUDFLEET_ACCESS_TOKEN_SECRET }}" \
-            --organization-id "${{ secrets.CLOUDFLEET_ORGANIZATION_ID }}"
-
       - name: Configure kubeconfig
         shell: bash
         run: |
