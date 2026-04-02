@@ -468,15 +468,15 @@ jobs:
                 VALUES_ARGS+=(-f "app/$file")
               fi
             done <<'EOF'
-      ${{ inputs.values_files }}
-      EOF
-      fi
+          ${{ inputs.values_files }}
+          EOF
+          fi
       
-      helm template "${{ inputs.release_name }}" "devops-templates/${{ inputs.templates_chart_path }}" \
-      "${VALUES_ARGS[@]}" \
-      --set "image.repository=${{ env.REGISTRY }}" \
-      --set "image.image=${{ inputs.image_name }}" \
-      --set "image.tag=${{ needs.prepare.outputs.image_tag }}"
+          helm template "${{ inputs.release_name }}" "devops-templates/${{ inputs.templates_chart_path }}" \
+          "${VALUES_ARGS[@]}" \
+          --set "image.repository=${{ env.REGISTRY }}" \
+          --set "image.image=${{ inputs.image_name }}" \
+          --set "image.tag=${{ needs.prepare.outputs.image_tag }}"
 
       - name: Deploy to Kubernetes
         shell: bash
@@ -491,48 +491,48 @@ jobs:
                 VALUES_ARGS+=(-f "app/$file")
               fi
             done <<'EOF'
-  ${{ inputs.values_files }}
-  EOF
-  fi
+          ${{ inputs.values_files }}
+          EOF
+          fi
   
-  CHART_PATH="helm-chart/${{ inputs.templates_chart_path }}"
-  
-  helm upgrade --install "${{ inputs.release_name }}" "${CHART_PATH}" \
-  "${VALUES_ARGS[@]}" \
-  --namespace "${NAMESPACE}" \
-  --create-namespace \
-  --set "image.repository=${{ env.REGISTRY }}" \
-  --set "image.image=${{ inputs.image_name }}" \
-  --set "image.tag=${{ needs.prepare.outputs.image_tag }}"
+          CHART_PATH="helm-chart/${{ inputs.templates_chart_path }}"
+          
+          helm upgrade --install "${{ inputs.release_name }}" "${CHART_PATH}" \
+          "${VALUES_ARGS[@]}" \
+          --namespace "${NAMESPACE}" \
+          --create-namespace \
+          --set "image.repository=${{ env.REGISTRY }}" \
+          --set "image.image=${{ inputs.image_name }}" \
+          --set "image.tag=${{ needs.prepare.outputs.image_tag }}"
 
-- name: Verify imagePullSecrets configuration
-  if: ${{ inputs.verify_rollout_name != '' }}
-  shell: bash
-  run: |
-    set -euo pipefail
-    
-    IMAGE_PULL_SECRETS=$(kubectl get deployment "${{ inputs.verify_rollout_name }}" \
-      --namespace "${NAMESPACE}" \
-      -o jsonpath='{.spec.template.spec.imagePullSecrets[*].name}')
-    
-    echo "Deployment imagePullSecrets: ${IMAGE_PULL_SECRETS}"
-    
-    if [[ "${IMAGE_PULL_SECRETS}" != *ghcr-secret* ]]; then
-      echo "Deployment '${{ inputs.verify_rollout_name }}' does not reference ghcr-secret"
-      exit 1
-    fi
+      - name: Verify imagePullSecrets configuration
+        if: ${{ inputs.verify_rollout_name != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          IMAGE_PULL_SECRETS=$(kubectl get deployment "${{ inputs.verify_rollout_name }}" \
+            --namespace "${NAMESPACE}" \
+            -o jsonpath='{.spec.template.spec.imagePullSecrets[*].name}')
+          
+          echo "Deployment imagePullSecrets: ${IMAGE_PULL_SECRETS}"
+          
+          if [[ "${IMAGE_PULL_SECRETS}" != *ghcr-secret* ]]; then
+            echo "Deployment '${{ inputs.verify_rollout_name }}' does not reference ghcr-secret"
+            exit 1
+          fi
 
-- name: Verify rollout
-  if: ${{ inputs.verify_rollout_name != '' }}
-  shell: bash
-  run: |
-    set -euo pipefail
-    
-    kubectl rollout status deployment/${{ inputs.verify_rollout_name }} \
-      --namespace "${NAMESPACE}" \
-      --timeout=180s
-    
-    if kubectl get pods -n "${NAMESPACE}" | grep -E 'ImagePullBackOff|ErrImagePull'; then
-      echo "Detected image pull errors after rollout"
-      exit 1
-    fi
+      - name: Verify rollout
+        if: ${{ inputs.verify_rollout_name != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          kubectl rollout status deployment/${{ inputs.verify_rollout_name }} \
+            --namespace "${NAMESPACE}" \
+            --timeout=180s
+          
+          if kubectl get pods -n "${NAMESPACE}" | grep -E 'ImagePullBackOff|ErrImagePull'; then
+            echo "Detected image pull errors after rollout"
+            exit 1
+          fi
