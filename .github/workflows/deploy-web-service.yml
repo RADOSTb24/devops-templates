@@ -455,6 +455,29 @@ jobs:
           echo "=== templates ==="
           find devops-templates -maxdepth 4 -type f | sort
 
+      - name: Helm template validation
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VALUES_ARGS=()
+
+          if [ -n "${{ inputs.values_files }}" ]; then
+            while IFS= read -r file; do
+              if [ -n "$file" ]; then
+                VALUES_ARGS+=(-f "app/$file")
+              fi
+            done <<'EOF'
+      ${{ inputs.values_files }}
+      EOF
+      fi
+      
+      helm template "${{ inputs.release_name }}" "devops-templates/${{ inputs.templates_chart_path }}" \
+      "${VALUES_ARGS[@]}" \
+      --set "image.repository=${{ env.REGISTRY }}" \
+      --set "image.image=${{ inputs.image_name }}" \
+      --set "image.tag=${{ needs.prepare.outputs.image_tag }}"
+
       - name: Deploy to Kubernetes
         shell: bash
         run: |
