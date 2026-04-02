@@ -446,6 +446,15 @@ jobs:
               --docker-password="${{ secrets.GHCR_PAT }}"
           fi
 
+      - name: Debug checked out files
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== app ==="
+          find app -maxdepth 3 -type f | sort
+          echo "=== templates ==="
+          find devops-templates -maxdepth 4 -type f | sort
+
       - name: Deploy to Kubernetes
         shell: bash
         run: |
