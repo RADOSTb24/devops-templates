@@ -302,7 +302,7 @@ jobs:
 
   deploy-on-ssh:
     runs-on: ubuntu-latest
-    if: ${{ github.ref_name == inputs.dev_branch && inputs.deploy_mode == 'ssh' }}
+    if: ${{ always() && needs.prepare.result == 'success' && needs.build-and-push.result == 'success' && github.ref_name == inputs.dev_branch && inputs.deploy_mode == 'ssh' }}
     needs: [prepare, build-and-push]
     environment: ${{ needs.prepare.outputs.environment }}
 
@@ -368,7 +368,7 @@ jobs:
 
   deploy-on-k8s:
     runs-on: ubuntu-latest
-    if: ${{ inputs.deploy_mode == 'kubernetes' && (github.ref_name == inputs.prod_branch || github.ref_name == inputs.dev_branch) }}
+    if: ${{ always() && needs.prepare.result == 'success' && needs.build-and-push.result == 'success' && inputs.deploy_mode == 'kubernetes' && (github.ref_name == inputs.prod_branch || github.ref_name == inputs.dev_branch) }}
     needs: [prepare, build-and-push]
     environment: ${{ needs.prepare.outputs.environment }}
     permissions:
