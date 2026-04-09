@@ -1,0 +1,21 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "web-service.fullname" . }}-postgresql
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "web-service.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.postgresql.service.headless }}
+  clusterIP: None
+  {{- end }}
+  ports:
+    - name: postgresql
+      port: {{ .Values.postgresql.service.port }}
+      targetPort: {{ .Values.postgresql.containerPort }}
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: {{ include "web-service.name" . }}-postgresql
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

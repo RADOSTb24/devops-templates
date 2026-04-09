@@ -99,3 +99,49 @@ hpa:
       stabilizationWindowSeconds: 0
       policies: []
   metrics: []
+
+postgresql:
+  enabled: false
+
+  image:
+    repository: postgres
+    tag: "18"
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  containerPort: 5432
+
+  service:
+    name: postgresql
+    port: 5432
+    headless: true
+
+  persistence:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+    storageClassName: ""
+
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  env:
+    POSTGRES_DB: app
+    POSTGRES_USER: app
+    PGDATA: /var/lib/postgresql/data/pgdata
+
+  secret:
+    enabled: true
+    data:
+      POSTGRES_PASSWORD: "<SET_OUTSIDE_GIT>"
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
