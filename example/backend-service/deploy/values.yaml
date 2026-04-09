@@ -107,3 +107,28 @@ hpa:
       stabilizationWindowSeconds: 0
       policies: []
   metrics: []
+
+postgresql:
+  enabled: true
+
+  env:
+    POSTGRES_DB: database
+    POSTGRES_USER: user
+    PGDATA: /var/lib/postgresql/data/pgdata
+
+  secret:
+    enabled: true
+    data:
+      POSTGRES_PASSWORD: "password"
+
+  persistence:
+    enabled: true
+    size: 5Gi
+
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"

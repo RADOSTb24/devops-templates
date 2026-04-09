@@ -37,6 +37,10 @@ A minimal frontend service example including:
     - rollback
     - uninstall
 
+### PostgreSQL Integration Example
+
+Both backend and frontend services can be extended to include PostgreSQL integration. The `helm/web-service/templates` directory contains PostgreSQL templates that can be enabled by updating the `values.yaml` file in the `deploy/` directory of each service.
+
 ---
 
 ## 🎯 Purpose
@@ -48,6 +52,7 @@ The goal of these example services is to demonstrate:
 - How to separate:
     - Template logic
     - Service-specific configuration
+- **How to enable PostgreSQL for stateful applications**
 
 These examples are **not production-ready applications**.  
 They serve as **reference implementations** for integration with the CI/CD template.
@@ -73,6 +78,18 @@ A `deploy/` directory with layered Helm values:
 ### 3. Lightweight Workflows
 
 A `.github/workflows/` directory that calls reusable workflows from the template repository.
+
+### 4. Optional PostgreSQL Configuration
+
+To enable PostgreSQL, update the `values.yaml` file as follows:
+
+```yaml
+postgresql:
+  enabled: true
+  username: your-username
+  password: your-password
+  database: your-database
+```
 
 ---
 

@@ -1,0 +1,51 @@
+controller:
+  replicaCount: 2
+  priorityClassName: "system-node-critical"
+  hcloudToken:
+    existingSecret:
+      name: fleet-1-secrets # Change "fleet-1" with your fleet name
+      key: hetzner
+  nodeSelector:
+    cfke.io/provider: hetzner # This is the node selector that will be used to schedule the controller pods on the Hetzner nodes
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        -   weight: 1
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  -   key: app.kubernetes.io/component
+                      operator: In
+                      values:
+                        - controller
+                  -   key: app.kubernetes.io/name
+                      operator: In
+                      values:
+                        - hcloud-csi
+              topologyKey: "kubernetes.io/hostname"
+
+  # By default, these images are pulled from registry.k8s.io which is not recommended for production use.
+  # Cloudfleet providers a mirror of these images for convenience and it is recommended to use this mirror instead.
+  image:
+    csiAttacher:
+      name: quay.io/cloudfleet/csi-attacher
+    csiResizer:
+      name: quay.io/cloudfleet/csi-resizer
+    csiProvisioner:
+      name: quay.io/cloudfleet/csi-provisioner
+    livenessProbe:
+      name: quay.io/cloudfleet/livenessprobe
+
+node:
+  priorityClassName: "system-node-critical"
+  hostNetwork: true
+  nodeSelector:
+    cfke.io/provider: hetzner
+
+  image:
+    csiNodeDriverRegistrar:
+      name: quay.io/cloudfleet/csi-node-driver-registrar
+    livenessProbe:
+      name: quay.io/cloudfleet/livenessprobe
+    hcloudCSIDriver:
+      name: quay.io/cloudfleet/hcloud-csi-driver

@@ -13,6 +13,7 @@
 - Деплой в Kubernetes (Helm)
 - Деплой через SSH
 - Откат и удаление релиза
+- **Опциональную интеграцию PostgreSQL**
 
 Основная цель — **стандартизация релизного процесса**.
 
@@ -27,22 +28,25 @@
 - Поддержка rollback
 - Поддержка dev/prod
 - Многоуровневые values-файлы
+- **Поддержка PostgreSQL для stateful приложений**
 
 ---
 
 ## 🏗 Архитектура
 
-### Репозиторий шаблонов
+### Репозиторий шаблонов (`cloud-native-cicd-template`)
+
 Содержит:
-- workflow
-- Helm chart
+- переиспользуемые workflows GitHub Actions
+- универсальный Helm chart
+- **Helm-шаблоны для PostgreSQL**
 
 ### Репозитории сервисов
 Содержат:
 - код
 - Dockerfile
-- values
-- lightweight workflow
+- специфичные для проекта Helm values
+- легковесные обертки для workflows
 
 ---
 
@@ -51,9 +55,52 @@
 1. Push в main/develop
 2. Сборка образа
 3. Публикация в registry
-4. Деплой (K8s или SSH)
+4. Деплой:
+    - Kubernetes (Helm)
+    - или SSH (Docker run)
 5. Проверка
 6. Rollback при необходимости
+
+---
+
+## 🛠 Включение PostgreSQL
+
+Чтобы включить PostgreSQL в ваш проект:
+
+1. Обновите файл `values.yaml`, чтобы включить PostgreSQL:
+
+    ```yaml
+    postgresql:
+      enabled: true
+      username: your-username
+      password: your-password
+      database: your-database
+    ```
+
+2. Убедитесь, что шаблоны `postgresql` включены в ваш Helm chart:
+
+    ```yaml
+    # Пример: templates/postgresql-statefulset.yaml
+    apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: postgresql
+    spec:
+      ...
+    ```
+
+3. Разверните приложение с обновленным Helm chart:
+
+    ```bash
+    helm upgrade --install your-release-name ./helm/web-service -f values.yaml
+    ```
+
+4. Убедитесь, что StatefulSet и Service для PostgreSQL работают в вашем Kubernetes-кластере.
+
+### Постоянные тома для PostgreSQL
+
+Вы можете настроить постоянные тома с помощью Cloudfleet на Hetzner или Longhorn в любом Kubernetes-кластере, чтобы обеспечить сохранность данных для вашей базы данных PostgreSQL.
+Вот [инструкция](https://cloudfleet.ai/tutorials/cloud/use-persistent-volumes-with-cloudfleet-on-hetzner/) по настройке Persistent Volume Claim:
 
 ---
 
@@ -76,3 +123,12 @@ helm/web-service/
     ingress.yaml
     secret.yaml
     service.yaml
+    postgresql-configmap.yaml
+    postgresql-secret.yaml
+    postgresql-service.yaml
+    postgresql-statefulset.yaml
+
+example/
+  backend-service/
+  frontend-service/
+```
