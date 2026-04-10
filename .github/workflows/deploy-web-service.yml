@@ -126,12 +126,6 @@ on:
         default: "3.11"
         type: string
 
-      build_args:
-        description: "Optional multiline Docker build args"
-        required: false
-        default: ""
-        type: string
-
       templates_repo:
         description: "Repository with reusable Helm chart, for example RADOSTb24/devops-templates"
         required: false
@@ -177,6 +171,8 @@ on:
       CLOUDFLEET_ORGANIZATION_ID:
         required: false
       CLOUDFLEET_CLUSTER_ID:
+        required: false
+      BUILD_ARGS:
         required: false
 
 concurrency:
@@ -281,10 +277,6 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ secrets.GHCR_USERNAME }}
           password: ${{ secrets.GHCR_PAT }}
-      - name: Show build args before docker build
-        run: |
-          echo "Build args (raw):"
-          echo "${{ inputs.build_args }}"
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -296,7 +288,7 @@ jobs:
             ${{ needs.prepare.outputs.image_ref }}
             ${{ env.REGISTRY }}/${{ inputs.image_name }}:${{ needs.prepare.outputs.stable_tag }}
           build-args: |
-            ${{ inputs.build_args }}
+            ${{ secrets.BUILD_ARGS }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
