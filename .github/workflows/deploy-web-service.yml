@@ -283,8 +283,15 @@ jobs:
           password: ${{ secrets.GHCR_PAT }}
       - name: Show build args before docker build
         run: |
-          echo "Build args:"
+          echo "Build args (raw):"
           echo "${{ inputs.build_args }}"
+          echo "Build args (as list):"
+          echo "${{ inputs.build_args }}" | awk -F= '{print $1 "=" $2}'
+
+      - name: Prepare build args list
+        id: buildargs
+        run: |
+          echo "::set-output name=list::$(echo '${{ inputs.build_args }}' | awk 'NF' | sed 's/^ *- *//' | paste -sd "," -)"
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -295,8 +302,7 @@ jobs:
           tags: |
             ${{ needs.prepare.outputs.image_ref }}
             ${{ env.REGISTRY }}/${{ inputs.image_name }}:${{ needs.prepare.outputs.stable_tag }}
-          build-args: |
-            ${{ inputs.build_args }}
+          build-args: ${{ steps.buildargs.outputs.list }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
