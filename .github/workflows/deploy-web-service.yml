@@ -302,7 +302,8 @@ jobs:
           tags: |
             ${{ needs.prepare.outputs.image_ref }}
             ${{ env.REGISTRY }}/${{ inputs.image_name }}:${{ needs.prepare.outputs.stable_tag }}
-          build-args: ${{ steps.buildargs.outputs.list }}
+          build-args: |
+            ${{ inputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
