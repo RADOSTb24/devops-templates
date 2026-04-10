@@ -281,6 +281,10 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ secrets.GHCR_USERNAME }}
           password: ${{ secrets.GHCR_PAT }}
+      - name: Show build args before docker build
+        run: |
+          echo "Build args:"
+          echo "${{ inputs.build_args }}"
 
       - name: Build and push image
         uses: docker/build-push-action@v6

@@ -24,6 +24,7 @@ The main goal is to **standardize the release process** and eliminate duplicatio
 - Reusable GitHub Actions workflows
 - Parameterized CI/CD pipeline
 - Kubernetes deployment via Helm
+- [Cluster management via Cloudfleet](https://cloudfleet.ai/docs/introduction/getting-started/)
 - SSH deployment for VM environments
 - Docker-based build pipeline
 - Rollback support (Helm + Docker)
