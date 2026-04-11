@@ -104,6 +104,45 @@
 
 ---
 
+## 🔧 Использование BUILD_ARGS при сборке
+
+При сборке Docker-образов для фронтенда вы можете использовать переменную окружения `BUILD_ARGS`, чтобы передать свои пользовательские параметры. Это позволяет гибко настраивать процесс сборки в зависимости от ваших требований.
+
+### Пример использования
+
+1. Добавьте необходимые аргументы сборки в переменную `BUILD_ARGS` в вашем CI/CD pipeline или локально:
+
+    ```bash
+    export BUILD_ARGS="API_URL=https://api.example.com NODE_ENV=production"
+    ```
+
+2. Убедитесь, что ваш `Dockerfile` поддерживает эти аргументы. Например:
+
+    ```dockerfile
+    ARG API_URL
+    ARG NODE_ENV
+
+    ENV REACT_APP_API_URL=$API_URL
+    ENV NODE_ENV=$NODE_ENV
+
+    RUN npm run build
+    ```
+
+3. При сборке образа аргументы будут переданы в контейнер:
+
+    ```bash
+    docker build --build-arg API_URL=https://api.example.com --build-arg NODE_ENV=production -t frontend:latest .
+    ```
+
+4. В вашем CI/CD pipeline используйте секреты или переменные окружения для передачи значений в `BUILD_ARGS`:
+
+    ```yaml
+    build-args: |
+      ${{ secrets.BUILD_ARGS }}
+    ```
+
+---
+
 ## 📁 Структура
 
 ```text

@@ -107,6 +107,45 @@ Here is an [istruction](https://cloudfleet.ai/tutorials/cloud/use-persistent-vol
 
 ---
 
+## 🔧 Using BUILD_ARGS During Build
+
+When building Docker images for the frontend, you can use the `BUILD_ARGS` environment variable to pass custom parameters. This allows you to flexibly configure the build process according to your requirements.
+
+### Example Usage
+
+1. Add the required build arguments to the `BUILD_ARGS` variable in your CI/CD pipeline or locally:
+
+    ```bash
+    export BUILD_ARGS="API_URL=https://api.example.com NODE_ENV=production"
+    ```
+
+2. Ensure your `Dockerfile` supports these arguments. For example:
+
+    ```dockerfile
+    ARG API_URL
+    ARG NODE_ENV
+
+    ENV REACT_APP_API_URL=$API_URL
+    ENV NODE_ENV=$NODE_ENV
+
+    RUN npm run build
+    ```
+
+3. During the image build process, the arguments will be passed to the container:
+
+    ```bash
+    docker build --build-arg API_URL=https://api.example.com --build-arg NODE_ENV=production -t frontend:latest .
+    ```
+
+4. In your CI/CD pipeline, use secrets or environment variables to pass values to `BUILD_ARGS`:
+
+    ```yaml
+    build-args: |
+      ${{ secrets.BUILD_ARGS }}
+    ```
+
+---
+
 ## 📁 Repository Structure
 
 ```text
