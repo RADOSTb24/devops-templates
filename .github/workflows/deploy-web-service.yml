@@ -381,7 +381,7 @@ jobs:
 
       - name: Login to GHCR (for image scan)
         id: ghcr_login
-        if: ${{ contains(inputs.security_tools, 'trivy') && secrets.GHCR_USERNAME != '' && secrets.GHCR_PAT != '' }}
+        if: ${{ contains(inputs.security_tools, 'trivy') }}
         shell: bash
         run: |
           set -euo pipefail
