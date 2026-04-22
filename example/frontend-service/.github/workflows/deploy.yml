@@ -6,40 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  prepare-build-args:
-    runs-on: ubuntu-latest
-    outputs:
-      build_args: ${{ steps.args.outputs.build_args }}
-    steps:
-      - id: args
-        shell: bash
-        env:
-          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
-          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
-        run: |
-          set -euo pipefail
-
-          {
-            echo "build_args<<EOF"
-
-            if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-              echo "NODE_ENV=production"
-              echo "NEXT_PUBLIC_API_URL=https://api.example.local"
-              echo "NEXT_PUBLIC_AUTH_URL=https://api.example.local"
-            else
-              echo "NODE_ENV=development"
-              echo "NEXT_PUBLIC_API_URL=http://backend-dev.example.local"
-              echo "NEXT_PUBLIC_AUTH_URL=http://backend-dev.example.local"
-            fi
-
-            [ -n "$NEXT_PUBLIC_GOOGLE_CLIENT_ID" ] && echo "NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID"
-            [ -n "$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" ] && echo "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY"
-
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
   deploy:
-    needs: prepare-build-args
     uses: RADOSTb24/cloud-native-cicd-template/.github/workflows/deploy-web-service.yml@master
     with:
       component_name: frontend
@@ -62,11 +29,15 @@ jobs:
 
       docker_context: .
       dockerfile: ./Dockerfile
-      build_args: ${{ needs.prepare-build-args.outputs.build_args }}
       test_command: npm test
       test_language: node
       node_version: "20"
       verify_rollout_name: frontend
+
+      # Optional DevSecOps stage
+      security_enabled: true
+      security_fail_on_findings: false
+      security_tools: trivy,osv
     secrets:
       GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
       GHCR_PAT: ${{ secrets.GHCR_PAT }}
@@ -74,3 +45,4 @@ jobs:
       CLOUDFLEET_ACCESS_TOKEN_SECRET: ${{ secrets.CLOUDFLEET_ACCESS_TOKEN_SECRET }}
       CLOUDFLEET_ORGANIZATION_ID: ${{ secrets.CLOUDFLEET_ORGANIZATION_ID }}
       CLOUDFLEET_CLUSTER_ID: ${{ secrets.CLOUDFLEET_CLUSTER_ID }}
+      BUILD_ARGS: ${{ secrets.BUILD_ARGS }}

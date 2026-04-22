@@ -137,6 +137,12 @@ jobs:
 | namespace_dev | Пространство имен для разработки |
 | values_files | Файлы значений Helm |
 | build_args | Аргументы сборки Docker |
+| security_enabled | Включить этап security-сканирования |
+| security_fail_on_findings | Падать на найденных проблемах (блокирует деплой) |
+| security_tools | Список инструментов (например, `trivy,osv`) |
+| trivy_version | Версия Trivy (зафиксированная) |
+| trivy_severity | Уровни критичности |
+| trivy_ignore_unfixed | Игнорировать unfixed уязвимости |
 
 ---
 

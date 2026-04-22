@@ -150,6 +150,48 @@ on:
         default: "values.yaml"
         type: string
 
+      build_args:
+        description: "Multiline Docker build args (KEY=VALUE). Prefer passing secrets via GitHub Secrets in the caller repo."
+        required: false
+        default: ""
+        type: string
+
+      security_enabled:
+        description: "Enable security scanning stage (DevSecOps)"
+        required: false
+        default: true
+        type: boolean
+
+      security_fail_on_findings:
+        description: "If true, pipeline will fail and deployment jobs will be blocked when scans report findings"
+        required: false
+        default: false
+        type: boolean
+
+      security_tools:
+        description: "Comma-separated list of enabled tools: trivy,osv (example: trivy,osv). Default uses Trivy only."
+        required: false
+        default: "trivy"
+        type: string
+
+      trivy_version:
+        description: "Trivy version to install (pin a version; do not use 'latest' in production)"
+        required: false
+        default: "v0.69.3"
+        type: string
+
+      trivy_severity:
+        description: "Comma-separated severities to report (for example: CRITICAL,HIGH)"
+        required: false
+        default: "CRITICAL,HIGH"
+        type: string
+
+      trivy_ignore_unfixed:
+        description: "Ignore unfixed vulnerabilities (recommended for CI signal-to-noise)"
+        required: false
+        default: true
+        type: boolean
+
     secrets:
       GHCR_USERNAME:
         required: true
@@ -288,14 +330,120 @@ jobs:
             ${{ needs.prepare.outputs.image_ref }}
             ${{ env.REGISTRY }}/${{ inputs.image_name }}:${{ needs.prepare.outputs.stable_tag }}
           build-args: |
+            ${{ inputs.build_args }}
             ${{ secrets.BUILD_ARGS }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  security-scan:
+    name: Security scan (optional)
+    runs-on: ubuntu-latest
+    needs: [prepare, build-and-push]
+    if: ${{ always() && inputs.security_enabled && needs.prepare.result == 'success' && needs.build-and-push.result == 'success' }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout caller repository
+        uses: actions/checkout@v4
+
+      - name: Install Trivy (pinned)
+        if: ${{ contains(inputs.security_tools, 'trivy') }}
+        uses: aquasecurity/setup-trivy@v0.2.6
+        with:
+          version: ${{ inputs.trivy_version }}
+          cache: true
+
+      - name: "Trivy scan (repo: deps + IaC + secrets)"
+        id: trivy_fs
+        if: ${{ contains(inputs.security_tools, 'trivy') }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          IGNORE_UNFIXED=""
+          if [[ "${{ inputs.trivy_ignore_unfixed }}" == "true" ]]; then
+            IGNORE_UNFIXED="--ignore-unfixed"
+          fi
+
+          # Scan source tree: dependencies, Kubernetes/IaC misconfigurations, and secret patterns.
+          trivy fs \
+            --scanners vuln,config,secret \
+            --severity "${{ inputs.trivy_severity }}" \
+            ${IGNORE_UNFIXED} \
+            --exit-code 1 \
+            --no-progress \
+            .
+
+      - name: Login to GHCR (for image scan)
+        if: ${{ contains(inputs.security_tools, 'trivy') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+
+      - name: "Trivy scan (image)"
+        id: trivy_image
+        if: ${{ contains(inputs.security_tools, 'trivy') }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          IGNORE_UNFIXED=""
+          if [[ "${{ inputs.trivy_ignore_unfixed }}" == "true" ]]; then
+            IGNORE_UNFIXED="--ignore-unfixed"
+          fi
+
+          IMAGE_REF="${{ needs.prepare.outputs.image_ref }}"
+          echo "Scanning image: ${IMAGE_REF}"
+
+          trivy image \
+            --severity "${{ inputs.trivy_severity }}" \
+            ${IGNORE_UNFIXED} \
+            --exit-code 1 \
+            --no-progress \
+            "${IMAGE_REF}"
+
+      - name: OSV-Scanner (dependencies)
+        id: osv
+        if: ${{ contains(inputs.security_tools, 'osv') }}
+        continue-on-error: true
+        uses: google/osv-scanner-action@v2.3.5
+
+      - name: Enforce security gate (optional)
+        if: ${{ inputs.security_fail_on_findings }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          failed=0
+
+          echo "Security tools enabled: ${{ inputs.security_tools }}"
+          echo "trivy_fs outcome: ${{ steps.trivy_fs.outcome }}"
+          echo "trivy_image outcome: ${{ steps.trivy_image.outcome }}"
+          echo "osv outcome: ${{ steps.osv.outcome }}"
+
+          if [[ "${{ contains(inputs.security_tools, 'trivy') }}" == "true" ]]; then
+            [[ "${{ steps.trivy_fs.outcome }}" == "failure" ]] && failed=1
+            [[ "${{ steps.trivy_image.outcome }}" == "failure" ]] && failed=1
+          fi
+
+          if [[ "${{ contains(inputs.security_tools, 'osv') }}" == "true" ]]; then
+            [[ "${{ steps.osv.outcome }}" == "failure" ]] && failed=1
+          fi
+
+          if [[ "$failed" -eq 1 ]]; then
+            echo "::error::Security findings detected (security_fail_on_findings=true). Blocking deployment."
+            exit 1
+          fi
+
+          echo "Security gate passed (or no findings to enforce)."
+
+
   deploy-on-ssh:
     runs-on: ubuntu-latest
-    if: ${{ always() && needs.prepare.result == 'success' && needs.build-and-push.result == 'success' && github.ref_name == inputs.dev_branch && inputs.deploy_mode == 'ssh' }}
-    needs: [prepare, build-and-push]
+    if: ${{ always() && needs.prepare.result == 'success' && needs.build-and-push.result == 'success' && (needs.security-scan.result == 'success' || needs.security-scan.result == 'skipped') && github.ref_name == inputs.dev_branch && inputs.deploy_mode == 'ssh' }}
+    needs: [prepare, build-and-push, security-scan]
     environment: ${{ needs.prepare.outputs.environment }}
 
     steps:
@@ -360,8 +508,8 @@ jobs:
 
   deploy-on-k8s:
     runs-on: ubuntu-latest
-    if: ${{ always() && needs.prepare.result == 'success' && needs.build-and-push.result == 'success' && inputs.deploy_mode == 'kubernetes' && (github.ref_name == inputs.prod_branch || github.ref_name == inputs.dev_branch) }}
-    needs: [prepare, build-and-push]
+    if: ${{ always() && needs.prepare.result == 'success' && needs.build-and-push.result == 'success' && (needs.security-scan.result == 'success' || needs.security-scan.result == 'skipped') && inputs.deploy_mode == 'kubernetes' && (github.ref_name == inputs.prod_branch || github.ref_name == inputs.dev_branch) }}
+    needs: [prepare, build-and-push, security-scan]
     environment: ${{ needs.prepare.outputs.environment }}
     permissions:
       contents: read
