@@ -177,7 +177,7 @@ on:
       trivy_version:
         description: "Trivy version to install (pin a version; do not use 'latest' in production)"
         required: false
-        default: "v0.69.3"
+        default: "v0.70.0"
         type: string
 
       trivy_severity:
