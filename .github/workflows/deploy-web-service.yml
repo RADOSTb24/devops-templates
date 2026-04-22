@@ -477,7 +477,6 @@ jobs:
         with:
           scan-args: |-
             --recursive
-            --skip-git
             ./
 
       - name: Security summary
