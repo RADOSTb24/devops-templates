@@ -29,6 +29,7 @@
 - Поддержка dev/prod
 - Многоуровневые values-файлы
 - **Поддержка PostgreSQL для stateful приложений**
+- Опциональный этап security-сканирования (DevSecOps)
 
 ---
 
@@ -54,12 +55,13 @@
 
 1. Push в main/develop
 2. Сборка образа
-3. Публикация в registry
-4. Деплой:
+3. Опциональное security-сканирование (по умолчанию не валит pipeline)
+4. Публикация в registry
+5. Деплой:
     - Kubernetes (Helm)
     - или SSH (Docker run)
-5. Проверка
-6. Rollback при необходимости
+6. Проверка
+7. Rollback при необходимости
 
 ---
 

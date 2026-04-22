@@ -33,6 +33,11 @@ jobs:
       test_language: node
       node_version: "20"
       verify_rollout_name: backend
+
+      # Optional DevSecOps stage
+      security_enabled: true
+      security_fail_on_findings: false
+      security_tools: trivy,osv
     secrets:
       GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
       GHCR_PAT: ${{ secrets.GHCR_PAT }}

@@ -137,6 +137,12 @@ jobs:
 | namespace_dev | Development namespace |
 | values_files | Helm values files |
 | build_args | Docker build arguments |
+| security_enabled | Enable security scanning stage |
+| security_fail_on_findings | Fail pipeline on findings (blocks deploy) |
+| security_tools | Enabled tools (e.g., `trivy,osv`) |
+| trivy_version | Trivy version (pinned) |
+| trivy_severity | Severities to report |
+| trivy_ignore_unfixed | Ignore unfixed vulnerabilities |
 
 ---
 
