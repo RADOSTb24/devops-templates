@@ -338,7 +338,7 @@ jobs:
   security-scan:
     name: Security scan (optional)
     runs-on: ubuntu-latest
-    needs: [prepare, build-and-push]
+    needs: [ prepare, build-and-push ]
     if: ${{ always() && inputs.security_enabled && needs.prepare.result == 'success' && needs.build-and-push.result == 'success' }}
     environment: ${{ needs.prepare.outputs.environment }}
     permissions:
@@ -464,7 +464,7 @@ jobs:
             --skip-git
             ./
 
-      - name: Security summary (counts)
+      - name: Security summary
         if: ${{ always() }}
         shell: bash
         run: |
@@ -476,7 +476,6 @@ jobs:
               echo "n/a"
               return
             fi
-            # Vulnerabilities count (best-effort, schema-safe)
             vulns=$(jq '[.Results[]?.Vulnerabilities[]?] | length' "$file" 2>/dev/null || echo "n/a")
             misconf=$(jq '[.Results[]?.Misconfigurations[]?] | length' "$file" 2>/dev/null || echo "n/a")
             secrets=$(jq '[.Results[]?.Secrets[]?] | length' "$file" 2>/dev/null || echo "n/a")
@@ -510,10 +509,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Default: pass
           passed=true
 
-          # Only evaluate tools that were requested
           if [[ "${{ contains(inputs.security_tools, 'trivy') }}" == "true" ]]; then
             [[ "${{ steps.trivy_fs.outcome }}" == "failure" ]] && passed=false
             [[ "${{ steps.trivy_image.outcome }}" == "failure" ]] && passed=false
@@ -525,7 +522,6 @@ jobs:
 
           echo "passed=$passed" >> "$GITHUB_OUTPUT"
 
-          # In audit mode we never fail the job, but we still compute passed=false.
           if [[ "${{ inputs.security_fail_on_findings }}" == "true" && "$passed" != "true" ]]; then
             echo "::error::Security findings detected. security_fail_on_findings=true => failing."
             exit 1
