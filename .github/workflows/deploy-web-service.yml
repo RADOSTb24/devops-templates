@@ -364,13 +364,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          set -x
+
+          trivy --version
 
           IGNORE_UNFIXED=""
           if [[ "${{ inputs.trivy_ignore_unfixed }}" == "true" ]]; then
             IGNORE_UNFIXED="--ignore-unfixed"
           fi
 
-          echo "Running: trivy fs"
+          # 1) human-readable report
           trivy fs \
             --scanners vuln,config,secret \
             --severity "${{ inputs.trivy_severity }}" \
@@ -378,9 +381,24 @@ jobs:
             --exit-code 1 \
             --timeout 10m \
             --no-progress \
+            --format table \
+            --output trivy-fs.txt \
+            .
+
+          # 2) machine-readable report for summary
+          trivy fs \
+            --scanners vuln,config,secret \
+            --severity "${{ inputs.trivy_severity }}" \
+            ${IGNORE_UNFIXED} \
+            --exit-code 1 \
+            --timeout 10m \
+            --no-progress \
+            --format json \
+            --output trivy-fs.json \
             .
 
       - name: Login to GHCR
+        if: ${{ contains(inputs.security_tools, 'trivy') }}
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -394,6 +412,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          set -x
 
           IGNORE_UNFIXED=""
           if [[ "${{ inputs.trivy_ignore_unfixed }}" == "true" ]]; then
@@ -409,7 +428,30 @@ jobs:
             --exit-code 1 \
             --timeout 10m \
             --no-progress \
+            --format table \
+            --output trivy-image.txt \
             "${IMAGE_REF}"
+
+          trivy image \
+            --severity "${{ inputs.trivy_severity }}" \
+            ${IGNORE_UNFIXED} \
+            --exit-code 1 \
+            --timeout 10m \
+            --no-progress \
+            --format json \
+            --output trivy-image.json \
+            "${IMAGE_REF}"
+
+      - name: Upload security reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports-${{ inputs.component_name }}-${{ github.run_id }}
+          path: |
+            trivy-fs.txt
+            trivy-fs.json
+            trivy-image.txt
+            trivy-image.json
 
       - name: Run OSV-Scanner (dependencies)
         id: osv
@@ -422,24 +464,43 @@ jobs:
             --skip-git
             ./
 
-      - name: Security summary
+      - name: Security summary (counts)
         if: ${{ always() }}
         shell: bash
         run: |
+          set -euo pipefail
+
+          count_json() {
+            file="$1"
+            if [ ! -f "$file" ]; then
+              echo "n/a"
+              return
+            fi
+            # Vulnerabilities count (best-effort, schema-safe)
+            vulns=$(jq '[.Results[]?.Vulnerabilities[]?] | length' "$file" 2>/dev/null || echo "n/a")
+            misconf=$(jq '[.Results[]?.Misconfigurations[]?] | length' "$file" 2>/dev/null || echo "n/a")
+            secrets=$(jq '[.Results[]?.Secrets[]?] | length' "$file" 2>/dev/null || echo "n/a")
+            echo "$vulns|$misconf|$secrets"
+          }
+
+          fs_counts=$(count_json trivy-fs.json)
+          img_counts=$(count_json trivy-image.json)
+
           {
             echo "## Security scan summary"
             echo ""
-            echo "- Enabled: **${{ inputs.security_enabled }}**"
             echo "- Tools: **${{ inputs.security_tools }}**"
+            echo "- Severity filter: **${{ inputs.trivy_severity }}**"
+            echo "- Ignore unfixed: **${{ inputs.trivy_ignore_unfixed }}**"
             echo "- Fail on findings: **${{ inputs.security_fail_on_findings }}**"
-            echo "- Trivy severity: **${{ inputs.trivy_severity }}**"
             echo ""
-            echo "### Step outcomes"
-            echo "- trivy_fs: **${{ steps.trivy_fs.outcome }}**"
-            echo "- trivy_image: **${{ steps.trivy_image.outcome }}**"
-            echo "- osv: **${{ steps.osv.outcome }}**"
+            echo "### Trivy FS (repo)"
+            echo "- counts (vuln|misconf|secrets): \`$fs_counts\`"
             echo ""
-            echo "> Note: in audit-mode, failed steps do not fail the pipeline; in enforce-mode they block deployment."
+            echo "### Trivy Image"
+            echo "- counts (vuln|misconf|secrets): \`$img_counts\`"
+            echo ""
+            echo "> Reports are uploaded as workflow artifacts: **security-reports-...**"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Enforce security gate (optional)
