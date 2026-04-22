@@ -342,6 +342,8 @@ jobs:
     if: ${{ always() && inputs.security_enabled && needs.prepare.result == 'success' && needs.build-and-push.result == 'success' }}
     permissions:
       contents: read
+    outputs:
+      passed: ${{ steps.gate.outputs.passed }}
 
     steps:
       - name: Checkout caller repository
@@ -354,29 +356,32 @@ jobs:
           version: ${{ inputs.trivy_version }}
           cache: true
 
-      - name: "Trivy scan (repo: deps + IaC + secrets)"
+      - name: "Trivy scan (repo: vuln + config + secret)"
         id: trivy_fs
         if: ${{ contains(inputs.security_tools, 'trivy') }}
-        continue-on-error: true
+        continue-on-error: ${{ !inputs.security_fail_on_findings }}
         shell: bash
         run: |
           set -euo pipefail
+
           IGNORE_UNFIXED=""
           if [[ "${{ inputs.trivy_ignore_unfixed }}" == "true" ]]; then
             IGNORE_UNFIXED="--ignore-unfixed"
           fi
 
-          # Scan source tree: dependencies, Kubernetes/IaC misconfigurations, and secret patterns.
+          echo "Running: trivy fs"
           trivy fs \
             --scanners vuln,config,secret \
             --severity "${{ inputs.trivy_severity }}" \
             ${IGNORE_UNFIXED} \
             --exit-code 1 \
+            --timeout 10m \
             --no-progress \
             .
 
       - name: Login to GHCR (for image scan)
-        if: ${{ contains(inputs.security_tools, 'trivy') }}
+        id: ghcr_login
+        if: ${{ contains(inputs.security_tools, 'trivy') && secrets.GHCR_USERNAME != '' && secrets.GHCR_PAT != '' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -385,10 +390,11 @@ jobs:
       - name: "Trivy scan (image)"
         id: trivy_image
         if: ${{ contains(inputs.security_tools, 'trivy') }}
-        continue-on-error: true
+        continue-on-error: ${{ !inputs.security_fail_on_findings }}
         shell: bash
         run: |
           set -euo pipefail
+
           IGNORE_UNFIXED=""
           if [[ "${{ inputs.trivy_ignore_unfixed }}" == "true" ]]; then
             IGNORE_UNFIXED="--ignore-unfixed"
@@ -401,48 +407,85 @@ jobs:
             --severity "${{ inputs.trivy_severity }}" \
             ${IGNORE_UNFIXED} \
             --exit-code 1 \
+            --timeout 10m \
             --no-progress \
             "${IMAGE_REF}"
 
-      - name: OSV-Scanner (dependencies)
+      - name: Run OSV-Scanner (dependencies)
         id: osv
         if: ${{ contains(inputs.security_tools, 'osv') }}
-        continue-on-error: true
-        uses: google/osv-scanner-action@v2.3.5
+        continue-on-error: ${{ !inputs.security_fail_on_findings }}
+        uses: google/osv-scanner-action/osv-scanner-action@v2.3.5
+        with:
+          scan-args: |-
+            --recursive
+            --skip-git
+            ./
+
+      - name: Security summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          {
+            echo "## Security scan summary"
+            echo ""
+            echo "- Enabled: **${{ inputs.security_enabled }}**"
+            echo "- Tools: **${{ inputs.security_tools }}**"
+            echo "- Fail on findings: **${{ inputs.security_fail_on_findings }}**"
+            echo "- Trivy severity: **${{ inputs.trivy_severity }}**"
+            echo ""
+            echo "### Step outcomes"
+            echo "- trivy_fs: **${{ steps.trivy_fs.outcome }}**"
+            echo "- trivy_image: **${{ steps.trivy_image.outcome }}**"
+            echo "- osv: **${{ steps.osv.outcome }}**"
+            echo ""
+            echo "> Note: in audit-mode, failed steps do not fail the pipeline; in enforce-mode they block deployment."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Enforce security gate (optional)
-        if: ${{ inputs.security_fail_on_findings }}
+        id: gate
+        if: ${{ always() }}
         shell: bash
         run: |
           set -euo pipefail
 
-          failed=0
+          # Default: pass
+          passed=true
 
-          echo "Security tools enabled: ${{ inputs.security_tools }}"
-          echo "trivy_fs outcome: ${{ steps.trivy_fs.outcome }}"
-          echo "trivy_image outcome: ${{ steps.trivy_image.outcome }}"
-          echo "osv outcome: ${{ steps.osv.outcome }}"
-
+          # Only evaluate tools that were requested
           if [[ "${{ contains(inputs.security_tools, 'trivy') }}" == "true" ]]; then
-            [[ "${{ steps.trivy_fs.outcome }}" == "failure" ]] && failed=1
-            [[ "${{ steps.trivy_image.outcome }}" == "failure" ]] && failed=1
+            [[ "${{ steps.trivy_fs.outcome }}" == "failure" ]] && passed=false
+            [[ "${{ steps.trivy_image.outcome }}" == "failure" ]] && passed=false
           fi
 
           if [[ "${{ contains(inputs.security_tools, 'osv') }}" == "true" ]]; then
-            [[ "${{ steps.osv.outcome }}" == "failure" ]] && failed=1
+            [[ "${{ steps.osv.outcome }}" == "failure" ]] && passed=false
           fi
 
-          if [[ "$failed" -eq 1 ]]; then
-            echo "::error::Security findings detected (security_fail_on_findings=true). Blocking deployment."
+          echo "passed=$passed" >> "$GITHUB_OUTPUT"
+
+          # In audit mode we never fail the job, but we still compute passed=false.
+          if [[ "${{ inputs.security_fail_on_findings }}" == "true" && "$passed" != "true" ]]; then
+            echo "::error::Security findings detected. security_fail_on_findings=true => failing."
             exit 1
           fi
 
-          echo "Security gate passed (or no findings to enforce)."
-
+          echo "Security gate result: passed=$passed"
 
   deploy-on-ssh:
     runs-on: ubuntu-latest
-    if: ${{ always() && needs.prepare.result == 'success' && needs.build-and-push.result == 'success' && (needs.security-scan.result == 'success' || needs.security-scan.result == 'skipped') && github.ref_name == inputs.dev_branch && inputs.deploy_mode == 'ssh' }}
+    if: >
+      ${{     
+        always() 
+        && needs.prepare.result == 'success' 
+        && needs.build-and-push.result == 'success' 
+        && (
+              !inputs.security_fail_on_findings
+              || needs.security-scan.outputs.passed == 'true'
+            )
+        && (github.ref_name == inputs.prod_branch || github.ref_name == inputs.dev_branch) 
+        && inputs.deploy_mode == 'ssh' 
+      }}
     needs: [prepare, build-and-push, security-scan]
     environment: ${{ needs.prepare.outputs.environment }}
 
@@ -508,7 +551,18 @@ jobs:
 
   deploy-on-k8s:
     runs-on: ubuntu-latest
-    if: ${{ always() && needs.prepare.result == 'success' && needs.build-and-push.result == 'success' && (needs.security-scan.result == 'success' || needs.security-scan.result == 'skipped') && inputs.deploy_mode == 'kubernetes' && (github.ref_name == inputs.prod_branch || github.ref_name == inputs.dev_branch) }}
+    if: >
+      ${{ 
+        always() 
+        && needs.prepare.result == 'success' 
+        && needs.build-and-push.result == 'success' 
+        && (
+              !inputs.security_fail_on_findings
+              || needs.security-scan.outputs.passed == 'true'
+            )
+        && inputs.deploy_mode == 'kubernetes' 
+        && (github.ref_name == inputs.prod_branch || github.ref_name == inputs.dev_branch) 
+      }}
     needs: [prepare, build-and-push, security-scan]
     environment: ${{ needs.prepare.outputs.environment }}
     permissions:
