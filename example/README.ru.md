@@ -165,6 +165,29 @@ jobs:
 - NEXT_PUBLIC_GOOGLE_CLIENT_ID
 - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
+Секреты, необходимые для сборки фронтенда, теперь можно передавать напрямую через `BUILD_ARGS`. Это упрощает процесс и обеспечивает безопасную обработку конфиденциальных данных во время сборки.
+
+#### Пример использования
+
+Чтобы передать секреты в качестве аргументов сборки, вы можете определить их в вашем CI/CD пайплайне или напрямую в команде сборки. Пример настройки `BUILD_ARGS` в YAML-файле:
+
+```yaml
+build_args:
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID: ваш-client-id
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ваш-api-key
+```
+
+Эти аргументы будут переданы в процесс сборки Docker и сопоставлены с переменными окружения внутри контейнера. Убедитесь, что в `Dockerfile` добавлены следующие инструкции для обработки этих аргументов:
+
+```dockerfile
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID="1234567890.apps.googleusercontent.com"
+ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="AIzaSyD-EXAMPLEKEY"
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+```
+
+Такая настройка гарантирует, что секреты будут доступны как переменные окружения во время выполнения.
+
 ---
 
 ## 🔄 Режимы развертывания

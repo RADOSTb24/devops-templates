@@ -162,8 +162,28 @@ jobs:
 
 ### Frontend Build-Time Secrets (optional)
 
-- NEXT_PUBLIC_GOOGLE_CLIENT_ID
-- NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+Secrets required for building the frontend can now be passed directly through `BUILD_ARGS`. This simplifies the process and ensures that sensitive data is handled securely during the build process.
+
+#### Example Usage
+
+To pass secrets as build arguments, you can define them in your CI/CD pipeline or directly in your build command. Below is an example of how to configure `BUILD_ARGS` in a YAML file:
+
+```yaml
+build_args:
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID: your-client-id
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: your-api-key
+```
+
+These arguments will be passed to the Docker build process and mapped to environment variables inside the container. Ensure that the `Dockerfile` includes the following instructions to handle these arguments:
+
+```dockerfile
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID="1234567890.apps.googleusercontent.com"
+ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="AIzaSyD-EXAMPLEKEY"
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+```
+
+This setup ensures that the secrets are available as environment variables during runtime.
 
 ---
 
