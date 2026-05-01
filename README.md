@@ -90,7 +90,7 @@ These parameters are inputs of `.github/workflows/deploy-web-service.yml`:
 - `security_enabled` (bool, default `true`) — enable/disable the security stage
 - `security_fail_on_findings` (bool, default `false`) — fail pipeline and block deploy on findings
 - `security_tools` (string, default `trivy`) — comma-separated list: `trivy`, `osv`
-- `trivy_version` (string, default `v0.69.3`) — pinned Trivy version
+- `trivy_version` (string, default `v0.70.0`) — pinned Trivy version
 - `trivy_severity` (string, default `CRITICAL,HIGH`) — severities to report
 - `trivy_ignore_unfixed` (bool, default `true`) — ignore unfixed vulnerabilities
 
