@@ -41,6 +41,18 @@ on:
         default: ""
         type: string
 
+      container_network:
+        description: "Optional Docker network name for SSH rollback (e.g., shared-net)"
+        required: false
+        default: ""
+        type: string
+
+      container_volumes:
+        description: "Optional volume mounts for SSH rollback, space-separated (e.g., -v /host:/container)"
+        required: false
+        default: ""
+        type: string
+
       app_port:
         description: "Container port"
         required: true
@@ -202,18 +214,27 @@ jobs:
 
             docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
 
+            NETWORK_ARG=""
+            if [ -n "${{ inputs.container_network }}" ]; then
+              NETWORK_ARG="--network ${{ inputs.container_network }}"
+            fi
+
             if [ -n "$HOST_PORT" ]; then
               docker run -d \
                 --name "$CONTAINER_NAME" \
+                ${NETWORK_ARG} \
                 --restart unless-stopped \
                 -p "${HOST_PORT}:${APP_PORT}" \
                 ${{ inputs.container_env_vars }} \
+                ${{ inputs.container_volumes }} \
                 "$IMAGE_REF"
             else
               docker run -d \
                 --name "$CONTAINER_NAME" \
+                ${NETWORK_ARG} \
                 --restart unless-stopped \
                 ${{ inputs.container_env_vars }} \
+                ${{ inputs.container_volumes }} \
                 "$IMAGE_REF"
             fi
 

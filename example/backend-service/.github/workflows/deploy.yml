@@ -38,6 +38,9 @@ jobs:
       security_enabled: true
       security_fail_on_findings: false
       security_tools: trivy,osv
+      # Optional SSH-specific options (used when deploy_mode: ssh)
+      container_network: shared-net
+      container_volumes: "-v /var/log/backend-service:/logs"
     secrets:
       GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
       GHCR_PAT: ${{ secrets.GHCR_PAT }}

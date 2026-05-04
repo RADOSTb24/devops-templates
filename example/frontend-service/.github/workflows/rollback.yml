@@ -27,6 +27,10 @@ jobs:
 
       verify_rollout_name: frontend
       revision: ${{ inputs.revision }}
+
+      # Optional SSH-specific options (used when deploy_mode: ssh)
+      # container_network: shared-net
+      # container_volumes: "-v /var/log/frontend-service:/logs"
     secrets:
       GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
       GHCR_PAT: ${{ secrets.GHCR_PAT }}

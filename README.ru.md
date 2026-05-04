@@ -106,6 +106,30 @@
 
 ---
 
+## 🐳 SSH-деплой: сеть и тома
+
+При деплое через SSH (`deploy_mode: ssh`) можно подключить контейнер к Docker-сети и смонтировать тома хоста.
+
+### Параметры
+
+- `container_network` (string, опционально) — имя Docker-сети для подключения контейнера (например, `shared-net`)
+- `container_volumes` (string, опционально) — флаги монтирования томов через пробел (например, `-v /host/path:/container/path`)
+
+### Пример
+
+```yaml
+with:
+  deploy_mode: ssh
+  container_network: shared-net
+  container_volumes: "-v /var/log/my-service:/logs"
+  # Несколько томов:
+  # container_volumes: "-v /var/log/my-service:/logs -v /data:/data"
+```
+
+Те же параметры поддерживаются в `rollback-web-service.yml`.
+
+---
+
 ## 🔧 Использование BUILD_ARGS при сборке
 
 `BUILD_ARGS` используется для передачи параметров сборки в Dockerfile через pipeline. Это позволяет настраивать процесс сборки в зависимости от окружения или других переменных.

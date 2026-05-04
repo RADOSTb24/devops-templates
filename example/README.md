@@ -25,6 +25,8 @@ A minimal backend service example including:
     - rollback
     - uninstall
 
+The deploy workflow demonstrates `container_network` and `container_volumes` usage for SSH deployment mode.
+
 ### frontend-service
 
 A minimal frontend service example including:
@@ -143,6 +145,8 @@ jobs:
 | trivy_version | Trivy version (pinned) |
 | trivy_severity | Severities to report |
 | trivy_ignore_unfixed | Ignore unfixed vulnerabilities |
+| container_network | Docker network name for SSH deploy (e.g., `shared-net`) |
+| container_volumes | Volume mounts for SSH deploy (e.g., `-v /host:/container`) |
 
 ---
 
@@ -199,6 +203,15 @@ This setup ensures that the secrets are available as environment variables durin
 
 - Docker-based deployment
 - Container restart strategy
+- Optional network attachment via `container_network`
+- Optional volume mounts via `container_volumes`
+
+```yaml
+with:
+  deploy_mode: ssh
+  container_network: shared-net
+  container_volumes: "-v /var/log/my-service:/logs"
+```
 
 ---
 

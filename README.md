@@ -158,6 +158,30 @@ Here is an [istruction](https://cloudfleet.ai/tutorials/cloud/use-persistent-vol
 
 ---
 
+## 🐳 SSH Deployment: Network and Volume Configuration
+
+When deploying via SSH (`deploy_mode: ssh`), you can attach the container to a Docker network and mount host volumes.
+
+### Inputs
+
+- `container_network` (string, optional) — Docker network name to attach the container to (e.g., `shared-net`)
+- `container_volumes` (string, optional) — Space-separated list of volume mount flags (e.g., `-v /host/path:/container/path`)
+
+### Example
+
+```yaml
+with:
+  deploy_mode: ssh
+  container_network: shared-net
+  container_volumes: "-v /var/log/my-service:/logs"
+  # Multiple volumes:
+  # container_volumes: "-v /var/log/my-service:/logs -v /data:/data"
+```
+
+The same inputs are supported in `rollback-web-service.yml`.
+
+---
+
 ## 🔧 Using BUILD_ARGS During Build
 
 When building Docker images for the frontend, you can use the `BUILD_ARGS` environment variable to pass custom parameters. This allows you to flexibly configure the build process according to your requirements.

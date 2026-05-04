@@ -25,6 +25,8 @@ example/
     - rollback
     - uninstall
 
+Пример deploy-workflow демонстрирует использование `container_network` и `container_volumes` для SSH-режима развертывания.
+
 ### frontend-service
 
 Минимальный пример frontend-сервиса, включающий:
@@ -143,6 +145,8 @@ jobs:
 | trivy_version | Версия Trivy (зафиксированная) |
 | trivy_severity | Уровни критичности |
 | trivy_ignore_unfixed | Игнорировать unfixed уязвимости |
+| container_network | Имя Docker-сети для SSH-деплоя (например, `shared-net`) |
+| container_volumes | Монтирование томов для SSH-деплоя (например, `-v /host:/container`) |
 
 ---
 
@@ -161,9 +165,6 @@ jobs:
 - CLOUDFLEET_CLUSTER_ID
 
 ### Секреты для сборки frontend (опционально)
-
-- NEXT_PUBLIC_GOOGLE_CLIENT_ID
-- NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
 Секреты, необходимые для сборки фронтенда, теперь можно передавать напрямую через `BUILD_ARGS`. Это упрощает процесс и обеспечивает безопасную обработку конфиденциальных данных во время сборки.
 
@@ -202,6 +203,15 @@ ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
 - Развертывание на основе Docker
 - Стратегия перезапуска контейнера
+- Опциональное подключение к сети через `container_network`
+- Опциональное монтирование томов через `container_volumes`
+
+```yaml
+with:
+  deploy_mode: ssh
+  container_network: shared-net
+  container_volumes: "-v /var/log/my-service:/logs"
+```
 
 ---
 
